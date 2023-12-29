@@ -1,6 +1,15 @@
+\usepackage{xcolor}
+
 % % Change from 1 to 0 to get rid of the comments.
 \newcommand{\showcomments}{1}
-\newcommand{\todoA}[1]{\textsf{\textbf{\color{blue}{[[#1]]}}}}
-\newcommand{\todoB}[1]{\textsf{\textbf{\color{yellow}{[[#1]]}}}}
-\newcommand{\ik}[1]{\todoA{Isaac: #1}}
-\newcommand{\ork}[1]{\todoB{Orran: #1}}
+\newcommand{\todoA}[1]{{\color{blue}\sffamily\bfseries[[#1]]}}
+\newcommand{\todoB}[1]{{\color{orange}\sffamily\bfseries[[#1]]}}
+\newcommand{\todoC}[1]{{\color{yellow}\sffamily\bfseries[[#1]]}}
+\newcommand{\todoD}[1]{{\color{purple}\sffamily\bfseries[[#1]]}}
+\newcommand{\todoE}[1]{{\color{red}\sffamily\bfseries[[#1]]}}
+\newcommand{\isaac}[1]{\todoA{Isaac: #1}}
+\newcommand{\orran}[1]{\todoB{Orran: #1}}
+\newcommand{\peter}[1]{\todoC{Peter: #1}}
+\newcommand{\suma}[1]{\todoD{Sumatra: #1}}
+\newcommand{\timo}[1]{\todoE{Timo: #1}}
+
