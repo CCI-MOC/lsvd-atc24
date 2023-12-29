@@ -20,3 +20,18 @@ Benefits:
 - Snapshots and clones are trivial
 
 - Elastic backend to prevent low-space GC thrashing
+
+\ork{
+I think we need to take head on that this is an extension of the previous work, and not hide that... 
+I would start off by motivating problem, i.e., we want disaggregated storage for a wide range of machines, BW, latency....
+Recent work developed a log structured approach; point to our eurosys paper, but the morons that did that work ended up with a system with some serious limitations.
+We adopted the implementation from that paper, and moved it to a gateway. Then say the work we did, i.e., shared cache, log replication, integrate into a SPDK, moved to a pure user-level implementation to support that, ...
+Then say, this new system, Gateway Log-Structured Virtual Device (GLSVD) has a number of major advantages over previous system:
+- enables machiens to boot from this
+- allows NVME to be shared across multiple physical machines; 
+- sharing of cache
+- compared system to an SSD backend...
+}
+
+We find....
+
