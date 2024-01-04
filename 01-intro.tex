@@ -1,38 +1,79 @@
 \section{Introduction}
 
-- Distributed networked storage has high demands on bandwidth and on the storage medium
+Remote block storage devices are the foundation of many cloud environments as
+a simple, widely-compatible source of persistent storage. As such, any
+implementation must contend with a wide range of workloads and use cases,
+providing similar semantics and performance with traditional local storage.
 
-- Traditionally solved with a write-back cache, but that makes state management hard
+Existing work \cite{lsvd} demonstrated the viability of a log-structured virtual
+disk (LSVD) on a single machine by developing a kernel module that exposes a
+virtual block device. The module batches writes to the backend on a local write
+log that is periodically flushed to the backend.  This approach requires
+modifications to the client and is thus not widely compatible with existing
+technologies.
 
-- Small writes are incredibly costly, you need consistency/replication semantics on every request
+We adopt the implementation in the existing paper and move it to a central
+gateway instead. We retain all the benefits of the existing implemenation, such
+as dramatically improved write performance and efficiency, while also enabling
+multiple new opportunities such as the ability to share the cache between
+different clients.
 
-- We propose a log-structured virtual disk on a central storage gateway, on top
-of immutable objects
+The prototype is implemented as a replacement for the RBD backend in SPDK.
+SPDK exposes our gateway as a block device over NVMe over Fabrics (NVMe-oF),
+which clients mounts as any other NVMEoF device. We then translate the RBD
+requests into our system.
 
-- Follow-up to LSVD\cite{lsvd}
+We thus propose a \textbf{Gateway Log-Structured Virtual Device (GLSVD)}
+\isaac{we really need a better name}. We show that our approach brings with it
+the following benefits:
 
-Benefits:
+\isaac{TODO: figure out a better way to word and organise this}
 
-- We get statistical multiplexing between different clients
+\begin{enumerate}
 
-- Built on top of immutable objects = trivial caching
+  \item \textbf{Statistical multiplexing} between clients
 
-- Batched writes for good write performance
+  \item \textbf{Shared cache:} The gateway can cache data from multiple clients
+        and thus amortise the cost of a read across multiple clients. This is
+        especially useful for workloads with high locality, such as booting a cluster
+        of identical virtual machines, where many of the blocks are shared and thus
+        take up no additional cache space per client.
 
-- Snapshots and clones are trivial
+  \item \textbf{Elastic backend:} Unlike traditional log-structured systems, the
+        size of our backend is not fixed, and may grow and shrink as according to the
+        needs the system. This allows us to prevent low-space garbage collection
+        thrashing, which is a common problem in other log-structured systems.
 
-- Elastic backend to prevent low-space GC thrashing
+  \item \textbf{Trivial snapshots and clones:}
+
+
+\end{enumerate}
+
+Our prototype demonstrates read performance on par with that of a local SSD for
+workloads that fit within our local cache while maintaining the benefit of
+improved write performance and efficiency.
+
+\isaac{briefly summarise setup}
+
+\isaac{briefly summarise rest of paper}
 
 \orran{
-  I think we need to take head on that this is an extension of the previous work, and not hide that...
+  I think we need to take head on that this is an extension of the previous
+  work, and not hide that...
 
-  I would start off by motivating problem, i.e., we want disaggregated storage for a wide range of machines, BW, latency....
+  I would start off by motivating problem, i.e., we want disaggregated storage
+  for a wide range of machines, BW, latency....
 
-  Recent work developed a log structured approach; point to our eurosys paper, but the morons that did that work ended up with a system with some serious limitations.
+  Recent work developed a log structured approach; point to our eurosys paper,
+  but the morons that did that work ended up with a system with some serious
+  limitations.
 
-  We adopted the implementation from that paper, and moved it to a gateway. Then say the work we did, i.e., shared cache, log replication, integrate into a SPDK, moved to a pure user-level implementation to support that, ...
+  We adopted the implementation from that paper, and moved it to a gateway. Then
+  say the work we did, i.e., shared cache, log replication, integrate into a
+  SPDK, moved to a pure user-level implementation to support that, ...
 
-  Then say, this new system, Gateway Log-Structured Virtual Device (GLSVD) has a number of major advantages over previous system:
+  Then say, this new system, Gateway Log-Structured Virtual Device (GLSVD) has a
+  number of major advantages over previous system:
 
   - enables machiens to boot from this
   - allows NVME to be shared across multiple physical machines;
