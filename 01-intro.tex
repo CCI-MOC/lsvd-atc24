@@ -18,11 +18,6 @@ as dramatically improved write performance and efficiency, while also enabling
 multiple new opportunities such as the ability to share the cache between
 different clients.
 
-The prototype is implemented as a replacement for the RBD backend in SPDK.
-SPDK exposes our gateway as a block device over NVMe over Fabrics (NVMe-oF),
-which clients mounts as any other NVMEoF device. We then translate the RBD
-requests into our system.
-
 We thus propose a \textbf{Gateway Log-Structured Virtual Device (GLSVD)}
 \isaac{we really need a better name}. We show that our approach brings with it
 the following benefits:
@@ -53,7 +48,7 @@ Our prototype demonstrates read performance on par with that of a local SSD for
 workloads that fit within our local cache while maintaining the benefit of
 improved write performance and efficiency.
 
-\isaac{briefly summarise setup}
+\isaac{briefly summarise setup and comparison}
 
 \isaac{briefly summarise rest of paper}
 

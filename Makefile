@@ -10,5 +10,5 @@ main.pdf: build/main.pdf
 
 clean:
 	latexmk -C
-	rm main.pdf
+	rm -f main.pdf
 

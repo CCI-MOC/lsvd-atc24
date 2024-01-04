@@ -1,5 +1,11 @@
 \section{Architecture}
 
+The gateway is implemented as a libRBD replacement, which we then expose to
+SPDK as RBD. SPDK then exposes the gateway as a block device over NVMe over
+Fabrics (NVMe-oF), which clients mount as any other NVMeoF device.
+
+\isaac{everything here is basically identical to LSVD, what more can we say?  }
+
 - Log structured on immutable backend objects
 
 - Present as librbd, on top of spdk
@@ -11,3 +17,21 @@
 - Clones are forks in history
 
 - Centralised cache on the gateway, clones share base objects
+
+\subsection{Clones and Snapshots}
+
+As with other log-structured storage systems, we implement clones as a fork in
+the log. \isaac{todo}
+
+\subsection{Read cache}
+
+Since the backing store of the images are immutable, the cache is a simple read
+cache for backend object requests. Requests for backend objects are aligned
+to 64KiB cache block boundaries, and the cache is a simple map of object name
+and offset to fixed 64KiB buffers stored on a local NVMe drive.
+
+For performance, we shard the cache into 16 shards, each of which has its own
+independent map and file on the NVMe drive. This allows us to avoid contention
+between different clients.
+
+Reads and writes to the cache are done asynchronously with io\_uring.
