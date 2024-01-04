@@ -2,9 +2,13 @@
 
 TEXFILES = $(wildcard *.tex)
 
-main.pdf: $(TEXFILES)
+build/main.pdf: $(TEXFILES)
 	latexmk
+
+main.pdf: build/main.pdf
+	cp $< $@
 
 clean:
 	latexmk -C
+	rm main.pdf
 
