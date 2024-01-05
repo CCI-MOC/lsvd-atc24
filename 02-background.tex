@@ -1,37 +1,82 @@
 \section{Background and Motivation}
 
-Explain the architecture of:
+Log-structured systems have been studied extensively in the past. The need for
+good performance has remained ever since the first log-structured file system
+was designed, and is the primary motivation for our work.
 
-- How much of LSVD do we explain here?
+To ensure durability of data, the write paths for conventional remote storage
+systems typically involve multiple writes to the backend, typically including
+one or more writes to a journal, followed by metadata, and finally the data
+itself to the backend. When summed across multiple replicated copies of the
+data, the amplification factor can be quite high. This makes small-write
+workloads particularly inefficient, as the overhead of the writes can be
+dwarfed by the overhead of replication, journaling, and in ensuring consistency.
 
-\subsection{Semantics}
+LSVD showed that a log-structured approach can be used to dramatically reduce
+the overhead of writes by batching writes together and only occasionally
+flushing them to the backend. LSVD, however, requires a high-performance local
+drive for write journaling and for read caching, which is not always available
+in datacenter environments.
+
+We believe that the log-structured approach is sound, and thus built an
+implementation where the system is moved to a centralised gateway. This reduces
+the requirement of hardware from every single client machine to only the few
+gateway servers, which is much more doable in a datacenter environment.
+
+The rest of this section shall first describe the design of RBD and some other
+remote block stores, and then describe the design of LSVD and the tradeoffs
+that motivated our implementation.
+
+\subsection{Ceph RBD}
+
+The implementation of Ceph RBD is fairly simple. A block device is divided up
+into fixed size chunks, typically 4MiB, and each chunk is mapped to a single
+RADOS object. Reads and writes at an offset in the block device are simply
+translated into reads from the corresponding RADOS object, which is possible
+because RADOS objects are mutable, unlike other immutable object stores where
+such as scheme would be much more difficult. Although the implementation is
+conceptually simple, there are quite a number of interesting choices that effect
+the efficiency and performance of the system.
+
+Reads are fairly straightforward, and are simply translated into reads from the
+backend, but this means that reads can only be cached on the OSD layer, and
+not any higher layer. Every read must thus take a trip to a backend OSD, which
+places a heavy burden on network bandwidth and storage device utilisation.
+
+Writes, however, are incredibly costly. While conceptually simple, each write is
+translated into a RADOS object update, which are much more complicated.  Ceph
+storage pools are typically triple-replicated, and thus each write operation
+must also be triple-replicated at the minimum. To maintain consistency and
+durability, each write operation is further amplified into many other
+operations, greatly increasing the cost of each write. This is especially true
+for small writes, which nevertheless must go through the same process as large
+writes. \isaac{how does rados actually do consistency?}
+
+Clones and snapshots are implemented as copy-on-write operations on the
+underlying RADOS objects.
+
+\subsection{Storage Placement Tradeoffs}
+
+Users of a storage system typically demand that data, above all, is
+\textit{safe}.  This means that no amount of data loss is acceptable, and thus
+the system must ensure that a write, once acknowledged, is resilient to the
+required failure scenarios.
+
+To safegaurd data, we must place a write journal on a different failure domain
+from the gateway.
 
 - Don't lose data - remote journal in a different failure domain
 
-- Sources of overhead: 
-    - IO amplification per write request
-    - Replication consistency invariants to maintain
-    - Data consistency between writes -- maintain ordering
+- Sources of overhead:
+- IO amplification per write request
+- Replication consistency invariants to maintain
+- Data consistency between writes -- maintain ordering
 
 - Solved with batched writes (with write journal)
-    - Doesn't this just move the problem to our gateway instead?
+- Doesn't this just move the problem to our gateway instead?
 
 - Backend representation is always self-consistent - we never present a non-consistent
-  view of the disk at any point in time
-
-\subsection{Ceph RADOS Block Device}
-
-- Fairly simple implementation
-
-- Image is divided up into xMB chunks, each of them mapped to a RADOS object
-
-- Writes just write to that object, reads read from the object
-
-- Clones and snapshots are COW for that object
-
-- Since pools are triple-replicated, incredible amonuts of amplification
-
-- Consistency for the three copies, cost to maintain consistency is high
+view of the disk at any point in time
 
 \subsection{Others}
 
