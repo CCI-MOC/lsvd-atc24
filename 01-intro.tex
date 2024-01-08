@@ -36,28 +36,29 @@ implementation brings with it many benefits:
 
 \begin{enumerate}
 
-  \item \textbf{Client compatibility:} the gateway can be deployed as a drop-in
-        replacement for existing block devices, and does not require any modifications
-        to the client. We can expose our gateway as a standard NVMe-oF or iSCSI
-        device, thus providing broad compatibility with most existing clients in a
-        datacenter environment with no modifications required.
+    \item \textbf{Client compatibility:} the gateway can be deployed as a drop-in
+          replacement for existing block devices, and does not require any modifications
+          to the client. We can expose our gateway as a standard NVMe-oF or iSCSI
+          device, thus providing broad compatibility with most existing clients in a
+          datacenter environment with no modifications required.
 
-  \item \textbf{Deployment compatibility:} by not requiring any client
-        modifications and only minimal hardware support on the gateway server, our
-        implementation easily fits into exsiting datacenter environments. Most
-        server environments have fixed hardware configurations, and thus cannot
-        accodomate any design which requires hardware configurations uncommon
-        in the datacenter.
+    \item \textbf{Deployment compatibility:} by not requiring any client
+          modifications and only minimal hardware support on the gateway server, our
+          implementation easily fits into exsiting datacenter environments. Most
+          server environments have fixed hardware configurations, and thus cannot
+          accodomate any design which requires hardware configurations uncommon
+          in the datacenter.
 
-  \item \textbf{Statistical multiplexing} between clients, allowing for higher
-        utilisation of datacenter resources.
+    \item \textbf{Statistical multiplexing} between clients, allowing for higher
+          utilisation of datacenter resources. We also disaggregate frontend client
+          bandwidth from backend storage bandwidth.
 
-  \item \textbf{Shared cache:} The gateway can cache data from multiple clients
-        and thus amortise the cost of a read across multiple clients. This is
-        especially useful for workloads with high locality, such as booting a cluster
-        of identical virtual machines, where many of the blocks are shared and thus
-        take up no additional cache space per client (described later in the
-        architecture details).
+    \item \textbf{Shared cache:} The gateway can cache data from multiple clients
+          and thus amortise the cost of a read across multiple clients. This is
+          especially useful for workloads with high locality, such as booting a cluster
+          of identical virtual machines, where many of the blocks are shared and thus
+          take up no additional cache space per client (described later in the
+          architecture details).
 
 \end{enumerate}
 

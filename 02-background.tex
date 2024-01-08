@@ -31,12 +31,13 @@ that motivated our implementation.
 
 The implementation of Ceph RBD is fairly simple. A block device is divided up
 into fixed size chunks, typically 4MiB, and each chunk is mapped to a single
-RADOS object. Reads and writes at an offset in the block device are simply
-translated into reads from the corresponding RADOS object, which is possible
-because RADOS objects are mutable, unlike other immutable object stores where
-such as scheme would be much more difficult. Although the implementation is
-conceptually simple, there are quite a number of interesting choices that effect
-the efficiency and performance of the system.
+RADOS object (where RADOS objects are Ceph's mutable objects). Reads and writes
+at an offset in the block device are simply translated into reads from the
+corresponding RADOS object, which is possible because RADOS objects are mutable,
+unlike other immutable object stores where such as scheme would be much more
+difficult. Although the implementation is conceptually simple, there are quite a
+number of interesting choices that effect the efficiency and performance of the
+system.
 
 Reads are fairly straightforward, and are simply translated into reads from the
 backend, but this means that reads can only be cached on the OSD layer, and
@@ -50,10 +51,52 @@ must also be triple-replicated at the minimum. To maintain consistency and
 durability, each write operation is further amplified into many other
 operations, greatly increasing the cost of each write. This is especially true
 for small writes, which nevertheless must go through the same process as large
-writes. \isaac{how does rados actually do consistency?}
+writes.
 
-Clones and snapshots are implemented as copy-on-write operations on the
-underlying RADOS objects.
+\subsection{Write Amplification}
+
+To understand why writes are so costly in Ceph RBD, we must first understand
+the path of a single write operation, regardless of its size.
+
+The RBD client first determines, using a consistent hash, the OSD to which the
+operation should be sent via a consistent hash. The OSD, upon receiving the
+request, must determine how to execute said request. If the data is written to a
+new object, it simply allocates space, writes the data, adds the location of the
+data to the metadata store (RocksDB), and returns. If the data is a partial
+overwrite, however, to prevent data loss due to power failure, the OSD must
+first write the data to a write-ahead log before commiting the operation. All
+the above is repeated on two other OSDs, and the operation only succeeds if
+all three OSDs succeed in their write.
+
+This means that, in the worst case, a single write operation can be amplified
+many times over in the backend. This is especially true of small writes due to
+minimum allocation sizes present throughout the stack, and thus amplyfing the
+write operations even further.
+
+Previous versions of Ceph used local filesystems to store objects, which meant
+ever worse write amplification characteristics as each write first gets written
+to a write-ahead log, then to the filesystem, resulting in doubled writes.
+Recent versions of Ceph bypass the local filesystem and instead directly write
+to the underlying block devices, achieving much better write performance and
+efficiency \cite{aghayev2019file}.
+
+Most problematically, existing investigation into the nature of block storage
+workloads have found that small writes are not an insignificant portion of most
+cloud environments, and that most volumes are write-dominant in nature, as reads
+are commonly served from cache and thus reach the backend less frequently.  Li
+et al \cite{li2020depth} found small writes dominate both AliCloud and
+Microsoft's Research Cloud block traces, where the average write size was less
+than 16KiB.  Additionally, write workloads are bursty, with many small writes
+occuring in a small space of time instead of a more even spread of requests over
+time.
+
+The above observations motivate a search for an approach that can reduce the
+overhead of writes, especially small writes, while still maintaining the same
+consistency and durability guarantees of the original system. This is especially
+important as small writes are extremely common in many block storage workloads,
+and thus run into the above inefficient write path frequently.
+
+\isaac{explain architecture of lsvd here? or in architecture}
 
 \subsection{Storage Placement Tradeoffs}
 
@@ -62,24 +105,28 @@ Users of a storage system typically demand that data, above all, is
 the system must ensure that a write, once acknowledged, is resilient to the
 required failure scenarios.
 
-To safegaurd data, we must place a write journal on a different failure domain
-from the gateway.
+Methods of accomplishing the above are manyfold and extensively studied in
+existing literature. Broadly speaking, there are three possible locations for
+the processing of storage data: on the client, on a gateway, directly on the
+backend, or a combination of the three.
 
-- Don't lose data - remote journal in a different failure domain
+Putting the processing on the client, as with the Ceph RBD and LSVD, is likely
+the simplest approach, but has the downside of often requiring explicit client
+support. This also allows prevents sharing of resources between different
+clients not on the same host as they are physically unable to do so.
 
-- Sources of overhead:
-- IO amplification per write request
-- Replication consistency invariants to maintain
-- Data consistency between writes -- maintain ordering
+Maintaining crash consistency in the event of failure, however, is tricky. If
+the write journal is placed on the same host as the client, then failure of the
+client host will lose data. The alternative is to not acknowledge writes until
+they're committed to the backend, but this is a costly approach as explained in
+the previously.
 
-- Solved with batched writes (with write journal)
-- Doesn't this just move the problem to our gateway instead?
+\subsection{Consistency Guarantees}
 
 - Backend representation is always self-consistent - we never present a non-consistent
 view of the disk at any point in time
 
-\subsection{Others}
+\subsection{Other Implementations}
 
-- What we know about other proprietary elastic block stores
-
-- Bring up OpenStack Cinder? Not a storage system, just an API on top of others
+\isaac{what do we know about other elastic block implementations? ??? in AWS 
+EBS, something FPGA in Azure, ??? in GCP}
