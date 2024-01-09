@@ -1,4 +1,4 @@
-\section{Architecture} \label{sec:architecture}
+\section{Architecture and Implementation} \label{sec:architecture}
 
 The storage gateway is implemented as a new backend in SPDK, which exposes
 Vinyl block devices as NVMe-oF or iSCSI devices to other clients. These are the
@@ -6,9 +6,11 @@ main components of the gateway: the \textit{write journal}, \textit{read cache},
 \textit{LBA to object maps}, and \textit{garbage collector}.
 
 The new SPDK backend is implemented in roughly 15k lines of C++, and is publicly
-available on Github at \textit{redacted}. We currently use Ceph RADOS as the
-object store backend, but the design is not tied to any specific backend and
-can be easily ported to S3 compatible object stores.
+available on Github at \redact{\url{https://github.com/CCI-MOC/lsvd-rbd}}. We
+currently use Ceph RADOS as the object store backend, but the design is not tied
+to any specific backend and can be easily ported to S3 compatible object stores.
+
+\subsection{Gateway Server}
 
 \subsection{Write Journal}
 

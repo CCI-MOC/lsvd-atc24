@@ -1,33 +1,35 @@
 \section{Background and Motivation}
 
-Log-structured systems have been studied extensively in the past. The need for
-good performance has remained ever since the first log-structured file system
-was designed, and is the primary motivation for our work.
+Vinyl has two primary motivations: to disaggregate storage performance from
+capacity, and to reduce the cost of small writes. We believe that these two
+combined will make for a block storage system well-suited to the cloud
+environment, where customer workloads are unpredictable and everchanging, and
+where most volumes are write-dominated.
 
-To ensure durability of data, the write paths for conventional remote storage
-systems typically involve multiple writes to the backend, typically including
-one or more writes to a journal, followed by metadata, and finally the data
-itself to the backend. When summed across multiple replicated copies of the
-data, the amplification factor can be quite high. This makes small-write
-workloads particularly inefficient, as the overhead of the writes can be
-dwarfed by the overhead of replication, journaling, and in ensuring consistency.
+\subsection{Existing approaches}
 
-LSVD showed that a log-structured approach can be used to dramatically reduce
-the overhead of writes by batching writes together and only occasionally
-flushing them to the backend. LSVD, however, requires a high-performance local
-drive for write journaling and for read caching, which is not always available
-in datacenter environments.
+Existing work has revealed mulitple possible approaches for constructing elastic
+block stores for deployment in the datacenter. The conceptually simplest is the
+RADOS Block Device (RBD), a remote block device part of the Ceph storage system.
+RBD is a thin layer on top of the Ceph Object Store (RADOS), and merely
+translates between the two interfaces. The performance and consistency
+charteristics of RBD are thus a direct reflection of the backing store.
 
-We believe that the log-structured approach is sound, and thus built an
-implementation where the system is moved to a centralised gateway. This reduces
-the requirement of hardware from every single client machine to only the few
-gateway servers, which is much more doable in a datacenter environment.
+An alternative approach, as demonstrated by the Log-Structured Virtual Disk
+(LSVD) \cite{lsvd}, is to implement the block device as a log-structured device
+on top of an immutable object store. The LSVD implementation is, however, mostly
+a theoretical demonstration, and is not widely compatible with existing
+infrastructure. It requires the installation of a custom kernel module and the
+presence of high performance NVMe drives on the client, which is not always
+possible in data center environments. Despite the practical drawbacks, the
+performance and efficiency benefits of the LSVD approach are still sufficiently
+promising to motivate further exploration.
 
-The rest of this section shall first describe the design of RBD and some other
-remote block stores, and then describe the design of LSVD and the tradeoffs
-that motivated our implementation.
+The following examines a few existing widely-deployed approaches to elastic
+block storage in more detail and discusses the tradeoffs they choose and how
+they motivate our design.
 
-\subsection{Ceph RBD}
+\subsubsection{Ceph RBD}
 
 The implementation of Ceph RBD is fairly simple. A block device is divided up
 into fixed size chunks, typically 4MiB, and each chunk is mapped to a single
@@ -51,9 +53,47 @@ must also be triple-replicated at the minimum. To maintain consistency and
 durability, each write operation is further amplified into many other
 operations, greatly increasing the cost of each write. This is especially true
 for small writes, which nevertheless must go through the same process as large
-writes.
+writes. Detailed investigations\cite{lee2017understanding,aghayev2019file} have
+found write amplification factors as high as 60 times for small (4KiB) writes in
+Ceph, which is obviously underisable for workloads where such writes are common.
 
-\subsection{Write Amplification}
+\subsubsection{Salus}
+
+\isaac{todo}
+
+\subsubsection{Blizzard}
+
+\isaac{todo}
+
+\subsection{Independence of Performance and Capacity}
+
+Broadly speaking, storage systems have two primary characteristics: performance,
+usually measured in terms of I/O operations per second (IOPS), and capacity,
+the raw amount of data that can be stored. These two need not be coupled, and
+we here argue that they \textit{shouldn't} be coupled. One can just as easily
+have a small disk that is frequently accessed, or a large disk that is rarely
+accessed.
+
+Hardware, however, usually couples the two. A given unit of storage media,
+whether SSD, HDD, persistent memory, tape, or otherwise, has a fixed amount of
+capacity and performance when manufactured. Between different types of media,
+the relationship between capacity and performance is often inverse, as higher
+capacities are often achieved by increasing the density of the media, and thus
+decreasing performance.
+
+Existing storage systems are of course aware of this issue and actively exploit
+the relationship between capacity and performance by, for example, placing
+metadata and logs on high performance SSDs and data on slower HDDs instead.
+
+This requires that the users of the system are aware of their workload
+characteristics ahead of time and plan for it, which while possible in limited
+circumstances, is generally not possible in general cloud environments where
+user workloads are arbitrary and unknowable ahead of time. Cloud providers would
+ideally offer the ability to provision capacity and performance separately, as
+usage of one does not imply the other.
+
+
+\subsection{Write Dominance}
 
 To understand why writes are so costly in Ceph RBD, we must first understand
 the path of a single write operation, regardless of its size.
@@ -98,6 +138,35 @@ and thus run into the above inefficient write path frequently.
 
 \isaac{explain architecture of lsvd here? or in architecture}
 
+\subsection{Log-Structured Storage}
+
+Log-structured systems have been studied extensively in the past. The need for
+good performance has remained ever since the first log-structured file system
+was designed, and is the primary motivation for our work.
+
+To ensure durability of data, the write paths for conventional remote storage
+systems typically involve multiple writes to the backend, typically including
+one or more writes to a journal, followed by metadata, and finally the data
+itself to the backend. When summed across multiple replicated copies of the
+data, the amplification factor can be quite high. This makes small-write
+workloads particularly inefficient, as the overhead of the writes can be
+dwarfed by the overhead of replication, journaling, and in ensuring consistency.
+
+LSVD showed that a log-structured approach can be used to dramatically reduce
+the overhead of writes by batching writes together and only occasionally
+flushing them to the backend. LSVD, however, requires a high-performance local
+drive for write journaling and for read caching, which is not always available
+in datacenter environments.
+
+We believe that the log-structured approach is sound, and thus built an
+implementation where the system is moved to an intermediate gateway. This
+reduces the requirement of hardware from every single client machine to only the
+few gateway servers, which is much more doable in a datacenter environment.
+
+The rest of this section shall first describe the design of RBD and some other
+remote block stores, and then describe the design of LSVD and the tradeoffs
+that motivated our implementation.
+
 \subsection{Storage Placement Tradeoffs}
 
 Users of a storage system typically demand that data, above all, is
@@ -110,7 +179,7 @@ existing literature. Broadly speaking, there are three possible locations for
 the processing of storage data: on the client, on a gateway, directly on the
 backend, or a combination of the three.
 
-Putting the processing on the client, as with the Ceph RBD and LSVD, is likely
+Putting the processing on the client, as with the Blizzard and LSVD, is likely
 the simplest approach, but has the downside of often requiring explicit client
 support. This also allows prevents sharing of resources between different
 clients not on the same host as they are physically unable to do so.
@@ -121,6 +190,15 @@ client host will lose data. The alternative is to not acknowledge writes until
 they're committed to the backend, but this is a costly approach as explained in
 the previously.
 
+By co-locating state with the client, we also lose the ability to easily migrate
+virtual machines to another machine when required without additional complexity,
+either in also migrating state or by redirecting the client to the old host
+to access previous state.
+
+The upside, however, is that the client exists in the same failure domain as
+the storage system, and thus the failure of one almost certainly implies the
+other. \isaac{todo}
+
 \subsection{Consistency Guarantees}
 
 - Backend representation is always self-consistent - we never present a non-consistent
@@ -128,5 +206,5 @@ view of the disk at any point in time
 
 \subsection{Other Implementations}
 
-\isaac{what do we know about other elastic block implementations? ??? in AWS 
-EBS, something FPGA in Azure, ??? in GCP}
+\isaac{what do we know about other elastic block implementations? ??? in AWS
+	EBS, something FPGA in Azure, ??? in GCP}

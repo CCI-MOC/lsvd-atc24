@@ -7,34 +7,33 @@ providing similar semantics and performance with traditional local storage.
 Many cloud providers provide an implementation of an elastic block store system,
 but none of them have been open-sourced or published.
 
-Existing work, however, hes revealed mulitple possible approaches for
-constructing elastic block stores for deployment in the datacenter. The most
-notable is the RADOS Block Device (RBD), a remote block device part of the Ceph
-storage system. RBD is a thin layer on top of the Ceph Object Store (RADOS), and
-merely translates between the two interfaces. The performance and consistency
-charteristics of RBD are thus a direct reflection of the backing store.
+Existing approaches, however, tie together two separate characteristics of a
+storage system: capacity and performance (i.e. IOPS). RBD is a thin layer on the
+backend storage servers, and thus IOPS is fundamentally limited by the hardware
+already deployed on said servers. LSVD runs on the client, and is thus limited
+by client hardware and not elastic in practice. This is at odds with the modern
+approach to building datacenters which provisions and plans for all hardware and
+capacity up-front, and thus cannot accomodate changes in hardware during the
+service life.
 
-An alternative approach, as demonstrated by the Log-Structured Virtual Disk
-(LSVD) \cite{lsvd}, is to implement the block device as a log-structured device
-on top of an immutable object store. The LSVD implementation is, however, mostly
-a theoretical demonstration, and is not widely compatible with existing
-infrastructure. It requires the installation of a custom kernel module and the
-presence of high performance NVMe drives on the client, which is not always
-possible in data center environments. Despite the practical drawbacks, the
-performance and efficiency benefits of the LSVD approach are still sufficiently
-promising to motivate further exploration.
+We thus propose \textbf{Vinyl} \isaac{(placeholder name)}, a datacenter-suited
+implementation of a log-structured remote block storage device. We argue that
+the separation of storage capacity performance it iteslf desirable, and show
+that our implementation is able to achieve or exceed the performance and
+efficiency of existing remote block storage systems while also being elastic
+in performance independently of capacity or client hardware. We retain the
 
-With this in mind, we propose \isaac{placeholder name} \textbf{Vinyl}, a
-concrete datacenter-ready implementation of a log-structured remote block
-storage device. We move the processing onto a central storage gateway server
-separate from the client, and show that our approach retains all the semantics
-and performance of the original LSVD implementation, while also engineering it
-for deployment in the datacenter.
-
-We demonstrate that a centralised gateway instead of a client-side
-implementation brings with it many benefits:
+We show that by moving storage processing onto an intermediate gateway server
+instead of being on the client or backend, we achieve the following:
 
 \begin{enumerate}
+
+    \item \textbf{Elastic performance:} the gateway server can be scaled
+          independently of the backend storage servers, allowing for elastic
+          performance without requiring any changes to the backend storage servers or
+          the clients.  This is especially useful in datacenter environments where
+          hardware is provisioned up-front and cannot be changed during the service
+          life.
 
     \item \textbf{Client compatibility:} the gateway can be deployed as a drop-in
           replacement for existing block devices, and does not require any modifications
@@ -49,16 +48,12 @@ implementation brings with it many benefits:
           accodomate any design which requires hardware configurations uncommon
           in the datacenter.
 
-    \item \textbf{Statistical multiplexing} between clients, allowing for higher
-          utilisation of datacenter resources. We also disaggregate frontend client
-          bandwidth from backend storage bandwidth.
-
-    \item \textbf{Shared cache:} The gateway can cache data from multiple clients
-          and thus amortise the cost of a read across multiple clients. This is
-          especially useful for workloads with high locality, such as booting a cluster
-          of identical virtual machines, where many of the blocks are shared and thus
-          take up no additional cache space per client (described later in the
-          architecture details).
+    \item \textbf{Client resource sharing:} the gateway serves multiple clients
+          simultaneously, thus sharing gateway resources across all clients it serves.
+          Of special note is the sharing of the cache, which is especially helpful in
+          workloads with high locality (such as booting a cluster of virtual
+          machines), where many of the blocks are shared and thus take up no
+          additional cache space per client served.
 
 \end{enumerate}
 
@@ -83,5 +78,6 @@ and also reads when the working set fits within the local cache, achieving
 near-local SSD performance.
 
 We show that a log-structured block store built on immutable objects is viable
-for datacenter deployment with a centralised gateway, and that the expected
-performance characteristics of such a system are acheivable in practice.
+for datacenter deployment with an intermediate gateway server, that the expected
+performance characteristics of such a system are acheivable in practice, and
+that said performance is independently scalable of the backend or client.

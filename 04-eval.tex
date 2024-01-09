@@ -1,11 +1,19 @@
 \section{Evaluation}
 
-\isaac{probably put this in a table like the original paper}
+\subsection{Environment}
 
-- 6 machine cluster
+All experiments were run on a 6-machine cluster, 4 of which hosted Ceph OSDs, 1
+hosted the gateway, and another hosted the client. All hosts ran unmodified
+Ubuntu 22.04. The OSDs ran Ceph 17.2.6, with a pool of 16 Samsung P1635a 1.6TB
+SSDs and another pool of 48 Seagate Constellation.2 ST91000640SS 1TB HDDs.
 
-- 4 Ceph osd hosts, 1 gateway, 1 client
+All hosts had dual-socket Intel Xeon E5-2660 v2 CPUs and 128 GiB of DDR3-1600
+RAM.
 
-- 48 HDDs 7200rpm, 16 SSDs - find out aggregate backend bandwidth
+Where mentioned, experimental VMs were plain QEMU VMs running unmodified
+Ubuntu 22.04 server images. The images were obtained by running the unattended
+install on the Ubuntu server image distribution with most options unchanged.
 
-- Plain qemu vms
+\subsection{Microbenchmarks}
+
+\subsection{Filebench}

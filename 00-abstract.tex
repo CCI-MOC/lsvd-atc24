@@ -1,19 +1,19 @@
 \begin{abstract}
 
 	Storage systems consist of two independent but often tightly coupled
-	dimensions: capacity and performance (i.e. IOPS). Typing both together is
+	dimensions: capacity and performance (i.e. IOPS). Tying both together is
 	unavoidable when deploying hardware in a datacenter, but this need not be
 	the case in software when disaggregating storage. Existing solutions to
 	disaggregated block storage, however, have yet to fully explore the
 	potential of decoupling these two dimensions; they either place processing
 	on the client, tying performance to fixed local hardware, or on the backend,
 	tying performance to decisions made during capacity provisioning.
-	
+
 	We propose a new approach, moving processing to an intermediate gateway
 	layer on neither the client nor backend. We show that this disaggregates
 	performance from capacity as gateway servers can be independently scaled
 	from capacity and client servers. Our prototype demonstrates near-SSD
 	performance for common workloads, while also decreasing backend utilisation
 	compared to existing approaches.
-	
+
 \end{abstract}
