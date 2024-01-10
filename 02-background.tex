@@ -57,9 +57,13 @@ writes. Detailed investigations\cite{lee2017understanding,aghayev2019file} have
 found write amplification factors as high as 60 times for small (4KiB) writes in
 Ceph, which is obviously underisable for workloads where such writes are common.
 
+Typical deployments of RBD for virtual machines depend on hypervisor support.
+The hypervisor directs reads to libRBD, which then translates I/O operations to
+their corresponding Ceph RADOS operation.
+
 \subsubsection{Salus}
 
-\isaac{todo}
+Salus is built on top of the Hadoop Distributed Filesystem (HDFS) \isaac{todo}
 
 \subsubsection{Blizzard}
 
@@ -163,14 +167,16 @@ implementation where the system is moved to an intermediate gateway. This
 reduces the requirement of hardware from every single client machine to only the
 few gateway servers, which is much more doable in a datacenter environment.
 
-The rest of this section shall first describe the design of RBD and some other
-remote block stores, and then describe the design of LSVD and the tradeoffs
-that motivated our implementation.
+An additional benefit of representing backend data as discrete log objects, as
+in LSVD, is that the backend representation of the disk is always consistent.
+Other approaches may sometime leave the durable representation of the disk in an
+inconsistent or invalid state, requiring additional work on failure to recover
+to a consistent state.
 
 \subsection{Storage Placement Tradeoffs}
 
 Users of a storage system typically demand that data, above all, is
-\textit{safe}.  This means that no amount of data loss is acceptable, and thus
+\textit{safe}. This means that no amount of data loss is acceptable, and thus
 the system must ensure that a write, once acknowledged, is resilient to the
 required failure scenarios.
 
@@ -198,11 +204,6 @@ to access previous state.
 The upside, however, is that the client exists in the same failure domain as
 the storage system, and thus the failure of one almost certainly implies the
 other. \isaac{todo}
-
-\subsection{Consistency Guarantees}
-
-- Backend representation is always self-consistent - we never present a non-consistent
-view of the disk at any point in time
 
 \subsection{Other Implementations}
 

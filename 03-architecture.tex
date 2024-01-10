@@ -1,16 +1,27 @@
 \section{Architecture and Implementation} \label{sec:architecture}
 
+\begin{figure}
+	\centering
+	\includegraphics[width=1\linewidth]{figs/lsvd-highlv-arch.png}
+	\caption[short]{TODO: High level architecture of Vinyl}
+\end{figure}
+
 The storage gateway is implemented as a new backend in SPDK, which exposes
 Vinyl block devices as NVMe-oF or iSCSI devices to other clients. These are the
 main components of the gateway: the \textit{write journal}, \textit{read cache},
 \textit{LBA to object maps}, and \textit{garbage collector}.
 
-The new SPDK backend is implemented in roughly 15k lines of C++, and is publicly
-available on Github at \redact{\url{https://github.com/CCI-MOC/lsvd-rbd}}. We
-currently use Ceph RADOS as the object store backend, but the design is not tied
-to any specific backend and can be easily ported to S3 compatible object stores.
+Vinyl is implemented in roughly 15k lines of C++, and is publicly available on
+Github at \redact{\url{https://github.com/CCI-MOC/lsvd-rbd}}. We currently use
+Ceph RADOS as the object store backend, but the design is not tied to any
+specific backend and can be easily ported to S3 compatible object stores.
 
 \subsection{Gateway Server}
+
+A key component of Vinyl is the intermediate gateway server, which sits between
+the client and the backend storage.
+
+\isaac{todo}
 
 \subsection{Write Journal}
 
@@ -20,8 +31,8 @@ primary difference is in the placement of the write log.
 
 In traditional log-structured systems, the log is directly written to the
 storage medium, but in our case that is not possible as failure of the system
-hosting our gateway would result in irrecoverable data loss. Instead, we
-place the write journal on a separate failure domain than the gateway, and only
+hosting our gateway would result in irrecoverable data loss. Instead, we place
+the write journal on a separate failure domain than the gateway, and only
 acknowledge writes when they have been safely recorded on the remote journal.
 
 In practice, our write journal is a local NVMe drive on another server, and
@@ -30,11 +41,11 @@ Depending on the desired durability characteristings, it is possible to instead
 store the write log on a remote server's RAM instead, which would introduce a
 vulnerability to simultaneous failure of both the gateway and the remote write
 log server. We present the performance tradeoffs of these two approaches in
-Section~\ref{sec:results}. If even more stringest guarantees are required of the
-system, it is possible to use two remote write log servers instead of one. The
-write log is also ideal use of persistent memory technology with its
-characteristics of high longevity and latency, but due to the discontinuation of
-Intel's Optane drives we did not pursue this approach.
+Section~\ref{sec:evaluation}. If even more stringest guarantees are required of
+the system, it is possible to use two remote write log servers instead of one.
+\isaac{Probably cut this} The write log is also ideal use of persistent memory
+technology with its characteristics of high longevity and latency, but due to
+the discontinuation of Intel's Optane drives we did not pursue this approach.
 
 The primary benefit of our log-structured approach is that it allows us to batch
 many writes together into a single write to our backend, the object store. While
@@ -46,7 +57,7 @@ double-writing each write, once to the journal and once to the backend, but we
 reduce the amplification in terms of operations to the backend, and operations
 overall.
 
-\isaac{question: how much of lsvd do we re-describe here?}
+The write journal in Vinyl is a ring buffer \isaac{but it isn't?}
 
 \subsection{Clones and Snapshots}
 

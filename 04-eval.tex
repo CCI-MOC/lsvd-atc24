@@ -1,19 +1,61 @@
-\section{Evaluation}
+\section{Evaluation} \label{sec:evaluation}
+
+We make the following claims about our system:
+
+\begin{enumerate}
+
+	\item On read workloads where the working set fits in the cache, Vinyl
+	      approaches the performance of a local SSD mounted over NVMeoF with SPDK.
+
+	\item We achieve high write performance in all metrics, including IOPS,
+	      throughput, and latency.
+
+	\item We can scale with the number of clients independently of the backend,
+	      as we serve reads from cache instead of the backend.
+
+\end{enumerate}
+
+To test the above claims, we use a combination of synthetic microbenchmarks,
+primarily FIO, and real-world workloads, primarily Filebench. We also compare
 
 \subsection{Environment}
 
 All experiments were run on a 6-machine cluster, 4 of which hosted Ceph OSDs, 1
 hosted the gateway, and another hosted the client. All hosts ran unmodified
-Ubuntu 22.04. The OSDs ran Ceph 17.2.6, with a pool of 16 Samsung P1635a 1.6TB
-SSDs and another pool of 48 Seagate Constellation.2 ST91000640SS 1TB HDDs.
+Ubuntu 22.04 with the Linux 5.15.0-89-generic kernel, had dual-socket Intel Xeon
+E5-2660 v2 CPUs and 128 GiB of DDR3-1600 RAM, and were connected over 40GbE
+Emulex OneConnect Skyhawk NICs.
 
-All hosts had dual-socket Intel Xeon E5-2660 v2 CPUs and 128 GiB of DDR3-1600
-RAM.
+The Ceph instance ran on Ceph Quincy 17.2.6, and consists of two primary pools:
+a SSD pool backed by 16 Samsung P1635a 1.6TB SSDs, and a HDD pool backed by 48
+Seagate Constellation.2 ST91000640SS 1TB HDDs.
 
-Where mentioned, experimental VMs were plain QEMU VMs running unmodified
-Ubuntu 22.04 server images. The images were obtained by running the unattended
-install on the Ubuntu server image distribution with most options unchanged.
+Unless otherwise mentioned, VMs are plain QEMU VMs running unmodified Ubuntu
+22.04 server images. The images were obtained by running the unattended install
+on the Ubuntu server image distribution with most options unchanged.
 
 \subsection{Microbenchmarks}
+
+We present a variety of Fio microbenchmarks to demonstrate the performance of
+the disk. All Fio benchmarks were run with a fixed random seed to ensure
+repeatability.
+
+\subsubsection{Writes}
+
+As explained above, Vinyl is optimised for writes. \isaac{compare:}
+
+- our write iops to rbd on ssd
+
+- latency v concurrency/qd (choose one)
+
+- we used 10 year old hardware, so we get 10 year old results
+
+\subsubsection{Reads}
+
+- show (hopefully) linear scaling of num clients v total iops
+
+- mention how close we get to saturating the speed/iops of the equivalent
+  spdk mounted on local nvme
+
 
 \subsection{Filebench}
