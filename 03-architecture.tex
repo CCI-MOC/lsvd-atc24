@@ -21,19 +21,32 @@ specific backend and can be easily ported to S3 compatible object stores.
 A key component of Vinyl is the intermediate gateway server, which sits between
 the client and the backend storage.
 
-\isaac{todo}
+Clients connect via NVMe-oF or iSCSI to the gateway, SPDK translates to Vinyl
+commands. Vinyl, as a block storage device, support three major operations:
+reading from a logical block address (LBA), writing to an LBA, and write
+barriers that flush all outstanding writes to the backend. The gateway server
+then translates these operations into the appropriate operations on the backend.
+
+The choice \isaac{todo}
 
 \subsection{Write Journal}
 
-As with other log-structured storage systems, all writes are recorded on a
-write log, which serves also as the permanent data store of the system. The
-primary difference is in the placement of the write log.
+\begin{figure}
+	\centering
+	\includegraphics[width=1\linewidth]{figs/arch-translation.pdf}
+	\caption[short]{TODO: Log structure}
+\end{figure}
 
-In traditional log-structured systems, the log is directly written to the
-storage medium, but in our case that is not possible as failure of the system
-hosting our gateway would result in irrecoverable data loss. Instead, we place
-the write journal on a separate failure domain than the gateway, and only
-acknowledge writes when they have been safely recorded on the remote journal.
+Log-structured storage systems treat the write log and the permanent data store
+as one and the same. Writes are recorded on the log, and that's where it shall
+stay until it's moved by a garbage collector or deleted.
+
+Our design, however, does not allow for such a design. Our backend is an object
+store, which usually uses immutable objects, and overwriting said object on
+every client write would defeat the whole purpose of desiging the system for
+high write efficiency. Instead, we separate out the write journal from the
+backend, instead placing the write journal on a high-durability storage device
+on a different failure domain than the gateway itself.
 
 In practice, our write journal is a local NVMe drive on another server, and
 writes are acknowledged only when they have been acklowledged by the NVMe.
